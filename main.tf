@@ -87,7 +87,8 @@ resource "docker_container" "airflow" {
 }
 
 resource "docker_image" "airbyte" {
-  name         = "airbyte/airbyte:0.50.6"
+  # Versão pública estável conforme documentação do projeto
+  name         = "airbyte/airbyte:0.50.38"
   keep_locally = false
 }
 
