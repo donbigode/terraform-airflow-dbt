@@ -1,41 +1,90 @@
-# DBT + Airflow + PostgreSQL em Docker via Terraform
+dbt Airflow Project Infrastructure
+==================================
 
-Este template configura:
+Este projeto provisiona, via Terraform, uma infraestrutura local baseada em Docker para orquestrar pipelines de dados usando:
 
-- Apache Airflow 2.8.1
-- dbt-core 1.7.8
-- PostgreSQL 15
-- Estrutura de projeto com:
-  - `transforms/` (dbt)
-  - `orchestrate/` (Airflow)
-- Provisionamento via Terraform com provider Docker
+- Apache Airflow
+- dbt
+- PostgreSQL
+- Airbyte
 
-## Requisitos
+Tudo conectado em uma rede Docker customizada.
 
-- Docker
-- Terraform 1.3+
-- Make (opcional, mas recomendado)
+----------------------------------
+Estrutura da Infra
+----------------------------------
 
-## Como usar
+Serviço           | Imagem Docker                       | Porta Externa
+------------------|--------------------------------------|---------------
+PostgreSQL        | postgres:15                          | 5432
+Airflow Web UI    | apache/airflow:2.8.1-python3.10      | 8080
+dbt               | fishtownanalytics/dbt:1.0.0          | -
+Airbyte WebApp    | airbyte/webapp:0.50.62               | 8000
+Airbyte Server    | airbyte/server:0.50.62               | 8001
+Airbyte Worker    | airbyte/worker:0.50.62               | -
+Airbyte DB        | airbyte/db:0.50.62                   | -
 
-```bash
-# Subir os serviços
-make up
+----------------------------------
+Como usar (execução local)
+----------------------------------
 
-# Rodar os seeds e transformações
-make dbt-seed
-make dbt-run
+Usuários Unix (Linux/macOS):
+----------------------------
 
-# Acessar o Airflow
-make airflow-open
-```
+1. Subir a infraestrutura:
+   make up
 
-## Variáveis
+2. Acessar os serviços:
+   Airflow: http://localhost:8080
+   Airbyte: http://localhost:8000
 
-- `project_name` (default: `dbt_airflow_project`) — define prefixos dos recursos Docker.
+3. Derrubar a infraestrutura:
+   make down
 
-Para usar um nome diferente:
+4. Fazer uma limpeza completa (containers, volumes e estado Terraform):
+   make clean
 
-```bash
-make up PROJECT=meu_projeto
-```
+5. Recriar tudo do zero:
+   make recreate
+
+Usuários Windows (sem Make):
+----------------------------
+
+1. Subir a infraestrutura:
+   terraform init
+   terraform apply -auto-approve -var="project_name=dbt_airflow_project"
+
+2. Derrubar a infraestrutura:
+   terraform destroy -auto-approve -var="project_name=dbt_airflow_project"
+
+3. Limpeza manual (Docker):
+   docker rm -f (docker ps -aq)
+   docker volume rm (docker volume ls -q)
+   docker network rm dbt_airflow_project_net
+   del /f .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+
+----------------------------------
+Pré-requisitos
+----------------------------------
+
+- Docker: https://www.docker.com/
+- Terraform: https://developer.hashicorp.com/terraform/install
+
+Para usuários Unix:
+- GNU Make: Instale com `brew install make` (macOS) ou `sudo apt install make` (Linux)
+
+Para usuários Windows:
+- Use Git Bash, WSL ou terminal com suporte a Docker e Terraform
+
+----------------------------------
+Estrutura Esperada do Projeto
+----------------------------------
+
+.
+├── orchestrate/          # Contém DAGs do Airflow
+│   └── dags/
+├── transforms/           # Contém código dbt
+├── main.tf               # Infraestrutura com Terraform
+├── Makefile              # Comandos automatizados (Unix only)
+├── clean.sh              # Script de limpeza total (Unix only)
+└── README.md             # Este arquivo

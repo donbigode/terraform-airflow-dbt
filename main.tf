@@ -1,269 +1,227 @@
-# main.tf
-
-variable "project_name" {
-  type    = string
-  default = "dbt_airflow_project"
-}
-
 terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
       version = "~> 3.0"
     }
-    null = {
-      source = "hashicorp/null"
-      version = "~> 3.2"
-    }
   }
 }
 
-provider "docker" {}
+variable "project_name" {
+  type    = string
+  default = "dbt_airflow_project"
+}
 
-#################################################
-# Network e Volumes Docker
-#################################################
+provider "docker" {}
 
 resource "docker_network" "local_net" {
   name = "${var.project_name}_net"
 }
 
-resource "docker_volume" "airflow_dags"    {}
-resource "docker_volume" "airflow_logs"    {}
+resource "docker_volume" "airbyte_data" {}
+resource "docker_volume" "airflow_logs" {}
 resource "docker_volume" "airflow_plugins" {}
-resource "docker_volume" "dbt_models"      {}
-
-#################################################
-# Imagem e Container: Postgres
-#################################################
-
-resource "docker_image" "postgres" {
-  name = "postgres:15"
-}
+resource "docker_volume" "dbt_models" {}
 
 resource "docker_container" "postgres" {
   name  = "${var.project_name}_postgres"
-  image = docker_image.postgres.name
+  image = "postgres:15"
+  restart = "always"
 
   env = [
+    "POSTGRES_DB=airflow",
     "POSTGRES_USER=airflow",
-    "POSTGRES_PASSWORD=airflow",
-    "POSTGRES_DB=airflow"
+    "POSTGRES_PASSWORD=airflow"
   ]
+
+  mounts {
+    target = "/var/lib/postgresql/data"
+    type   = "volume"
+    source = docker_volume.dbt_models.name
+  }
+
+  healthcheck {
+    test     = ["CMD-SHELL", "pg_isready -U airflow"]
+    interval = "5s"
+    retries  = 5
+  }
+
+  networks_advanced {
+    name = docker_network.local_net.name
+  }
 
   ports {
     internal = 5432
     external = 5432
+    ip       = "0.0.0.0"
+    protocol = "tcp"
+  }
+}
+
+resource "docker_container" "airflow" {
+  name  = "${var.project_name}_airflow"
+  image = "apache/airflow:2.8.1-python3.10"
+  restart = "always"
+  depends_on = [docker_container.postgres]
+
+  command = [
+    "bash",
+    "-c",
+    "airflow db upgrade && nohup airflow scheduler & airflow webserver"
+  ]
+
+  env = [
+    "AIRFLOW__CORE__EXECUTOR=LocalExecutor",
+    "AIRFLOW__CORE__LOAD_EXAMPLES=False",
+    "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
+  ]
+
+  mounts {
+    source = abspath("${path.module}/orchestrate/dags")
+    target = "/opt/airflow/dags"
+    type   = "bind"
+  }
+
+  mounts {
+    source = docker_volume.airflow_logs.name
+    target = "/opt/airflow/logs"
+    type   = "volume"
+  }
+
+  mounts {
+    source = docker_volume.airflow_plugins.name
+    target = "/opt/airflow/plugins"
+    type   = "volume"
   }
 
   networks_advanced {
     name = docker_network.local_net.name
   }
-}
-
-#################################################
-# Imagem e Container: Airflow
-#################################################
-
-resource "docker_image" "airflow" {
-  name = "apache/airflow:2.8.1-python3.10"
-}
-
-resource "docker_container" "airflow" {
-  name       = "${var.project_name}_airflow"
-  image      = docker_image.airflow.name
-  depends_on = [docker_container.postgres]
-
-  env = [
-    "AIRFLOW__CORE__LOAD_EXAMPLES=False",
-    "AIRFLOW__CORE__EXECUTOR=LocalExecutor",
-    "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
-  ]
 
   ports {
     internal = 8080
     external = 8080
+    ip       = "0.0.0.0"
+    protocol = "tcp"
   }
-
-  # Montagem de volumes via mounts { … }
-  mounts {
-    type   = "volume"
-    source = docker_volume.airflow_dags.name
-    target = "/opt/airflow/dags"
-  }
-
-  mounts {
-    type   = "volume"
-    source = docker_volume.airflow_logs.name
-    target = "/opt/airflow/logs"
-  }
-
-  mounts {
-    type   = "volume"
-    source = docker_volume.airflow_plugins.name
-    target = "/opt/airflow/plugins"
-  }
-
-  command = ["bash", "-c", "airflow db upgrade && airflow webserver"]
-
-  networks_advanced {
-    name = docker_network.local_net.name
-  }
-}
-
-#################################################
-# Imagem e Container: dbt
-#################################################
-
-resource "docker_image" "dbt" {
-  name = "dbt-labs/dbt:1.7.8"
 }
 
 resource "docker_container" "dbt" {
   name  = "${var.project_name}_dbt"
-  image = docker_image.dbt.name
+  image = "fishtownanalytics/dbt:1.0.0"
+  restart = "always"
+  depends_on = [docker_container.postgres]
+
+  command = ["tail", "-f", "/dev/null"]
 
   env = [
     "DBT_PROFILES_DIR=/usr/app"
   ]
 
-  # Montagem de volume via mounts { … }
   mounts {
-    type   = "volume"
-    source = docker_volume.dbt_models.name
+    source = abspath("${path.module}/transforms")
     target = "/usr/app"
+    type   = "bind"
+  }
+
+  networks_advanced {
+    name = docker_network.local_net.name
   }
 
   working_dir = "/usr/app"
-  command     = ["tail", "-f", "/dev/null"]
+}
+
+resource "docker_container" "airbyte_db" {
+  name  = "airbyte_db"
+  image = "airbyte/db:0.50.38"
+  restart = "always"
+
+  env = [
+    "POSTGRES_USER=airbyte",
+    "POSTGRES_PASSWORD=password",
+    "POSTGRES_DB=airbyte"
+  ]
+
+  mounts {
+    target = "/var/lib/postgresql/data"
+    type   = "volume"
+    source = docker_volume.airbyte_data.name
+  }
 
   networks_advanced {
     name = docker_network.local_net.name
   }
 }
 
-#################################################
-# null_resource para criar diretórios/arquivos
-#################################################
+resource "docker_container" "airbyte_server" {
+  name  = "airbyte_server"
+  image = "airbyte/server:0.50.38"
+  restart = "always"
 
-resource "null_resource" "project_setup" {
-  provisioner "local-exec" {
-    command = <<-EOT
-      #!/bin/bash
-      set -e
-      mkdir -p orchestrate/dags
-      mkdir -p transforms/models
-      mkdir -p transforms/data
+  env = [
+    "AIRBYTE_ROLE=server",
+    "DATABASE_USER=airbyte",
+    "DATABASE_PASSWORD=password",
+    "DATABASE_HOST=airbyte_db",
+    "DATABASE_PORT=5432",
+    "DATABASE_DB=airbyte"
+  ]
 
-      cat <<EOF > .gitignore
-      # Terraform
-      .terraform/
-      *.tfstate
-      *.tfstate.backup
-      .terraform.lock.hcl
+  depends_on = [docker_container.airbyte_db]
 
-      # dbt
-      transforms/target/
-      transforms/dbt_modules/
-      transforms/logs/
-
-      # Airflow
-      orchestrate/logs/
-      orchestrate/__pycache__/
-
-      # Python cache
-      __pycache__/
-      *.pyc
-      *.pyo
-      *.pyd
-
-      # VSCode config
-      .vscode/
-
-      # MacOS
-      .DS_Store
-      EOF
-
-      cat <<EOF > transforms/dbt_project.yml
-      name: transforms
-      version: "1.0"
-      config-version: 2
-
-      profile: dev
-
-      model-paths: ["models"]
-      seed-paths: ["data"]
-      target-path: "target"
-      clean-targets: ["target", "dbt_modules"]
-
-      models:
-        transforms:
-          +materialized: view
-      EOF
-
-      cat <<EOF > transforms/models/my_first_model.sql
-      -- models/my_first_model.sql
-      select *
-      from {{ ref('my_seed_data') }}
-      where id is not null
-      EOF
-
-      cat <<EOF > transforms/data/my_seed_data.csv
-      id,name
-      1,Alice
-      2,Bob
-      3,Charlie
-      EOF
-
-      cat <<EOF > orchestrate/dags/example_dbt_dag.py
-      from airflow import DAG
-      from airflow.operators.bash import BashOperator
-      from datetime import datetime, timedelta
-
-      default_args = {
-          'owner': 'airflow',
-          'start_date': datetime(2024, 1, 1),
-          'retries': 1,
-          'retry_delay': timedelta(minutes=5),
-      }
-
-      with DAG(
-          'dbt_transforms_example',
-          default_args=default_args,
-          description='Run dbt transformations from Airflow',
-          schedule_interval=None,
-          catchup=False,
-      ) as dag:
-
-          dbt_run = BashOperator(
-              task_id='dbt_run',
-              bash_command='docker exec ${var.project_name}_dbt dbt run',
-          )
-
-          dbt_run
-      EOF
-    EOT
+  ports {
+    internal = 8001
+    external = 8001
+    ip       = "0.0.0.0"
+    protocol = "tcp"
   }
 
-  triggers = {
-    always_run = timestamp()
+  networks_advanced {
+    name = docker_network.local_net.name
+  }
+}
+
+resource "docker_container" "airbyte_webapp" {
+  name  = "airbyte_webapp"
+  image = "airbyte/webapp:0.50.38"
+  restart = "always"
+
+  env = [
+    "AIRBYTE_ROLE=webapp",
+    "AIRBYTE_API_HOST=http://airbyte_server:8001"
+  ]
+
+  depends_on = [docker_container.airbyte_server, docker_container.airbyte_db]
+
+  ports {
+    internal = 8000
+    external = 8000
+    ip       = "0.0.0.0"
+    protocol = "tcp"
   }
 
-  depends_on = [docker_container.dbt, docker_container.airflow]
+  networks_advanced {
+    name = docker_network.local_net.name
+  }
 }
 
-#################################################
-# Outputs
-#################################################
+resource "docker_container" "airbyte_worker" {
+  name  = "airbyte_worker"
+  image = "airbyte/worker:0.50.38"
+  restart = "always"
 
-output "dbt_container" {
-  value = docker_container.dbt.name
-}
+  env = [
+    "AIRBYTE_ROLE=worker",
+    "DATABASE_USER=airbyte",
+    "DATABASE_PASSWORD=password",
+    "DATABASE_HOST=airbyte_db",
+    "DATABASE_PORT=5432",
+    "DATABASE_DB=airbyte"
+  ]
 
-output "airflow_web_ui" {
-  value = "http://localhost:8080"
-}
+  depends_on = [docker_container.airbyte_server]
 
-output "postgres_connection" {
-  value = "postgresql://airflow:airflow@localhost:5432/airflow"
+  networks_advanced {
+    name = docker_network.local_net.name
+  }
 }
