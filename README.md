@@ -53,11 +53,12 @@ make clean         → Remove containers e estado Terraform
 
 Observações
 -----------
-- O Airbyte usa imagens fixas na versão 0.50.38 por estabilidade.
 - O container do dbt foi atualizado para a versão 1.8.8.
+- O Airflow utiliza a imagem na versão 2.8.4.
 - Os caminhos montados no Airflow e dbt usam bind com `abspath()` no Terraform (funciona apenas com caminhos absolutos).
 - Todos os containers compartilham a rede local criada pelo Terraform para facilitar a comunicação entre serviços.
-- Se mover o diretório do projeto e as montagens aparecerem como `deleted`, execute `make clean` para recriar os containers com os novos caminhos.
+- Se mover o diretório do projeto e as montagens aparecerem como `deleted`, execute `make clean && make clean-volumes` para recriar os containers com os novos caminhos.
+
 
 Manutenção
 ----------
