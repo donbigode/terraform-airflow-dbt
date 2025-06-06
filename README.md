@@ -52,6 +52,7 @@ make clean-volumes → Remove volumes persistentes
 
 Observações
 -----------
+- O container do dbt usa `/bin/sh -c` como entrypoint e fica ativo com `tail -f /dev/null`.
 - O Airbyte usa imagens fixas na versão 0.50.38 por estabilidade.
 - O container do dbt foi atualizado para a versão 1.8.8.
 - Os caminhos montados no Airflow e dbt usam bind com `abspath()` no Terraform (funciona apenas com caminhos absolutos).

@@ -50,7 +50,10 @@ resource "docker_image" "dbt" {
 resource "docker_container" "dbt" {
   name    = "${var.project_name}_dbt"
   image   = docker_image.dbt.image_id
-  command = ["tail", "-f", "/dev/null"]
+  # O entrypoint padrão da imagem é o binário `dbt`,
+  # portanto usamos /bin/sh para manter o container ativo.
+  entrypoint = ["/bin/sh", "-c"]
+  command    = ["tail -f /dev/null"]
   networks_advanced {
     name = docker_network.main.name
   }
