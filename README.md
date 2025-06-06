@@ -1,90 +1,61 @@
-dbt Airflow Project Infrastructure
-==================================
+Projeto Terraform - Airflow, dbt e Airbyte
+==========================================
 
-Este projeto provisiona, via Terraform, uma infraestrutura local baseada em Docker para orquestrar pipelines de dados usando:
+Descrição
+---------
+Este projeto usa Terraform para orquestrar um ambiente de dados local baseado em containers Docker. Ele inclui:
+- Apache Airflow: Orquestração de pipelines de dados
+- dbt (data build tool): Transformações SQL em data warehouse
+- Airbyte: Integração de dados entre sistemas
+- PostgreSQL: Banco de dados relacional para Airflow e Airbyte
 
-- Apache Airflow
-- dbt
-- PostgreSQL
-- Airbyte
+Pré-requisitos
+--------------
+- Docker instalado e em execução
+- Terraform >= 1.3.0
+- Acesso a imagens públicas do DockerHub
+- Sistemas suportados: Unix-like (macOS, Linux). Para Windows, recomenda-se WSL2 ou Docker Desktop.
 
-Tudo conectado em uma rede Docker customizada.
+Estrutura do Projeto
+--------------------
+- orchestrate/dags         → Código dos DAGs do Airflow
+- transforms/              → Projetos dbt
+- terraform/               → Arquivos .tf (infraestrutura)
+- Makefile                 → Comandos utilitários
 
-----------------------------------
-Estrutura da Infra
-----------------------------------
+Como usar
+---------
+1. Inicialize o Terraform:
 
-Serviço           | Imagem Docker                       | Porta Externa
-------------------|--------------------------------------|---------------
-PostgreSQL        | postgres:15                          | 5432
-Airflow Web UI    | apache/airflow:2.8.1-python3.10      | 8080
-dbt               | fishtownanalytics/dbt:1.0.0          | -
-Airbyte WebApp    | airbyte/webapp:0.50.62               | 8000
-Airbyte Server    | airbyte/server:0.50.62               | 8001
-Airbyte Worker    | airbyte/worker:0.50.62               | -
-Airbyte DB        | airbyte/db:0.50.62                   | -
+   terraform init
 
-----------------------------------
-Como usar (execução local)
-----------------------------------
+2. Suba a infraestrutura:
 
-Usuários Unix (Linux/macOS):
-----------------------------
-
-1. Subir a infraestrutura:
    make up
 
-2. Acessar os serviços:
-   Airflow: http://localhost:8080
-   Airbyte: http://localhost:8000
+3. Acesse os serviços:
 
-3. Derrubar a infraestrutura:
-   make down
+   - Airflow:      http://localhost:8080
+   - dbt (exec):   make dbt-run
+   - Airbyte:      http://localhost:8000
 
-4. Fazer uma limpeza completa (containers, volumes e estado Terraform):
-   make clean
+Comandos Makefile úteis
+-----------------------
+make up            → Sobe todos os containers
+make down          → Destroi todos os containers
+make recreate      → Faz um destroy + up (limpo)
+make dbt-run       → Executa o comando dbt run
+make dbt-test      → Executa o comando dbt test
+make dbt-debug     → Verifica configuração do dbt
+make clean-volumes → Remove volumes persistentes
 
-5. Recriar tudo do zero:
-   make recreate
+Observações
+-----------
+- O Airbyte usa imagens fixas na versão 0.50.38 por estabilidade.
+- Os caminhos montados no Airflow e dbt usam bind com `abspath()` no Terraform (funciona apenas com caminhos absolutos).
+- Todos os containers compartilham a rede local criada pelo Terraform para facilitar a comunicação entre serviços.
 
-Usuários Windows (sem Make):
-----------------------------
-
-1. Subir a infraestrutura:
-   terraform init
-   terraform apply -auto-approve -var="project_name=dbt_airflow_project"
-
-2. Derrubar a infraestrutura:
-   terraform destroy -auto-approve -var="project_name=dbt_airflow_project"
-
-3. Limpeza manual (Docker):
-   docker rm -f (docker ps -aq)
-   docker volume rm (docker volume ls -q)
-   docker network rm dbt_airflow_project_net
-   del /f .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
-
-----------------------------------
-Pré-requisitos
-----------------------------------
-
-- Docker: https://www.docker.com/
-- Terraform: https://developer.hashicorp.com/terraform/install
-
-Para usuários Unix:
-- GNU Make: Instale com `brew install make` (macOS) ou `sudo apt install make` (Linux)
-
-Para usuários Windows:
-- Use Git Bash, WSL ou terminal com suporte a Docker e Terraform
-
-----------------------------------
-Estrutura Esperada do Projeto
-----------------------------------
-
-.
-├── orchestrate/          # Contém DAGs do Airflow
-│   └── dags/
-├── transforms/           # Contém código dbt
-├── main.tf               # Infraestrutura com Terraform
-├── Makefile              # Comandos automatizados (Unix only)
-├── clean.sh              # Script de limpeza total (Unix only)
-└── README.md             # Este arquivo
+Manutenção
+----------
+- Atualize as imagens com cuidado (ex: Airflow e dbt têm dependências fixas).
+- Recomenda-se limpar volumes (`make clean-volumes`) ao trocar dados sensíveis como senhas ou nomes de bancos.

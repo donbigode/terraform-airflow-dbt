@@ -1,67 +1,69 @@
 # -----------------------------
-# Projec name : dbt + Airflow
+# 📦 Project name
 # -----------------------------
 PROJECT := dbt_airflow_project
 
 # -----------------------------
-# Check directories
+# 🗂 Check required directories
 # -----------------------------
 check-dirs:
-	@mkdir -p orchestrate/dags transforms
+	@mkdir -p orchestrate/dags transforms dbt airbyte_workspace
 	@test -d ./orchestrate/dags || (echo "❌ Missing ./orchestrate/dags" && exit 1)
 	@test -d ./transforms || (echo "❌ Missing ./transforms" && exit 1)
 
 # -----------------------------
-# Terraforming Infraestructure
+# 📦 Create Docker Volumes (optional)
+# -----------------------------
+create-volumes:
+	@echo "📦 Creating required Docker volumes..."
+	docker volume create airflow_logs || true
+	docker volume create airflow_plugins || true
+	docker volume create dbt_models || true
+	docker volume create airbyte_data || true
+
+# -----------------------------
+# 🚀 Terraform Infrastructure
 # -----------------------------
 up: check-dirs
 	@echo "🚀 Starting infrastructure..."
 	terraform init
 	terraform apply -auto-approve -var="project_name=$(PROJECT)"
 	@echo ""
-	@echo "🌐 Acesse os serviços:"
+	@echo "🌐 Services available:"
 	@echo "🔗 Airflow: http://localhost:8080"
 	@echo "🔗 Airbyte: http://localhost:8000"
-	@echo ""
 
+# -----------------------------
+# 🧹 Clean Containers, Volumes, and State
+# -----------------------------
 clean:
 	@echo "🧹 Cleaning Docker and Terraform state..."
-
-	# Remove contêineres relacionados ao projeto
 	-docker ps -aq --filter "name=$(PROJECT)" | xargs -r docker rm -f
-
-	# Remove volumes criados pelo Terraform (mais seguro: remove todos os volumes não usados)
+	-docker ps -aq --filter "name=airbyte_" | xargs -r docker rm -f
+	-docker volume rm airflow_logs airflow_plugins dbt_models airbyte_data || true
 	-docker volume prune -f
-
-	# Remove a rede do projeto, se existir
-	-docker network ls --format '{{.Name}}' | grep -q "^$(PROJECT)_net$$" && docker network rm $(PROJECT)_net || true
-
-	# Remove arquivos de estado do Terraform
+	-docker network ls --format '{{.Name}}' | grep -q "^$(PROJECT)_network$$" && docker network rm $(PROJECT)_network || true
 	-rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
-
-	# Remove caches Python
-	-rm -rf orchestrate/dags/__pycache__ transforms/__pycache__
-
-	@echo "✅ Cleaned up Docker resources and Terraform state."
+	-find . -type d -name '__pycache__' -exec rm -rf {} +
+	@echo "✅ Clean complete."
 
 # -----------------------------
-# Destroy Infrastructure
+# ⛔ Destroy Infra
 # -----------------------------
 down:
-	@echo "🛑 Stopping infrastructure...
+	@echo "🛑 Destroying infrastructure..."
 	terraform destroy -auto-approve -var="project_name=$(PROJECT)"
 	@echo "✅ Infrastructure stopped."
-stop: down
-	@echo "🛑 Stopping infrastructure...
-	terraform destroy -auto-approve -var="project_name=$(PROJECT)"
-	@echo "✅ Infrastructure stopped."
-# -----------------------------
-# Recreate Infrastructure
 
+stop: down
+
+# -----------------------------
+# ♻️ Recreate
+# -----------------------------
 recreate: clean up
 
 # -----------------------------
-# DBT Commands
+# 🧪 DBT Commands
 # -----------------------------
 dbt-run:
 	docker exec -it $(PROJECT)_dbt dbt run
@@ -76,7 +78,7 @@ dbt-shell:
 	docker exec -it $(PROJECT)_dbt bash
 
 # -----------------------------
-# Airflow Commands
+# 📡 Airflow Commands
 # -----------------------------
 airflow-open:
 	open http://localhost:8080
@@ -94,9 +96,9 @@ airflow-trigger:
 	docker exec -it $(PROJECT)_airflow airflow dags trigger example_dag
 
 # -----------------------------
-# Logs and Status
+# 🔍 Logs & Status
 # -----------------------------
 logs:
 	docker ps -a
-	docker logs $(PROJECT)_dbt
-	docker logs $(PROJECT)_airflow
+	docker logs $(PROJECT)_dbt || true
+	docker logs $(PROJECT)_airflow || true
