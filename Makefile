@@ -8,9 +8,9 @@ AIRFLOW_CONTAINER=$(PROJECT_NAME)_airflow
 # 🗂 Check required directories
 # -----------------------------
 check-dirs:
-	@mkdir -p orchestrate/dags transforms dbt airbyte_workspace
-	@test -d ./orchestrate/dags || (echo "❌ Missing ./orchestrate/dags" && exit 1)
-	@test -d ./transforms || (echo "❌ Missing ./transforms" && exit 1)
+       @mkdir -p orchestrate/dags transforms dbt
+       @test -d ./orchestrate/dags || (echo "❌ Missing ./orchestrate/dags" && exit 1)
+       @test -d ./transforms || (echo "❌ Missing ./transforms" && exit 1)
 
 # -----------------------------
 # 📦 Create Docker Volumes (optional)
@@ -19,8 +19,7 @@ create-volumes:
 	@echo "📦 Creating required Docker volumes..."
 	docker volume create airflow_logs || true
 	docker volume create airflow_plugins || true
-	docker volume create dbt_models || true
-	docker volume create airbyte_data || true
+       docker volume create dbt_models || true
 
 # -----------------------------
 # 🚀 Terraform Infrastructure
@@ -32,7 +31,6 @@ up: check-dirs
 	@echo ""
 	@echo "🌐 Services available:"
 	@echo "🔗 Airflow: http://localhost:8080"
-	@echo "🔗 Airbyte: http://localhost:8000"
 
 # -----------------------------
 # 🧹 Clean Containers, Volumes, and State
@@ -40,8 +38,7 @@ up: check-dirs
 clean:
     @echo "🧹 Cleaning Docker and Terraform state..."
     -docker ps -aq --filter "name=$(PROJECT_NAME)" | xargs -r docker rm -f
-	-docker ps -aq --filter "name=airbyte_" | xargs -r docker rm -f
-	-docker volume rm airflow_logs airflow_plugins dbt_models airbyte_data || true
+       -docker volume rm airflow_logs airflow_plugins dbt_models || true
 	-docker volume prune -f
     -docker network ls --format '{{.Name}}' | grep -q "^$(PROJECT_NAME)_network$$" && docker network rm $(PROJECT_NAME)_network || true
 	-rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup

@@ -61,7 +61,7 @@ resource "docker_container" "dbt" {
 }
 
 resource "docker_image" "airflow" {
-  name         = "apache/airflow:2.7.2"
+  name         = "apache/airflow:2.8.4"
   keep_locally = false
 }
 
@@ -87,32 +87,3 @@ resource "docker_container" "airflow" {
   command = ["bash", "-c", "airflow db init && airflow webserver"]
 }
 
-resource "docker_image" "airbyte" {
-  # Versão pública estável conforme documentação do projeto
-  name         = "airbyte/airbyte:0.50.38"
-  keep_locally = false
-}
-
-resource "docker_container" "airbyte" {
-  name  = "${var.project_name}_airbyte"
-  image = docker_image.airbyte.image_id
-  ports {
-    internal = 8000
-    external = 8000
-  }
-  env = [
-    "AIRBYTE_ROLE=webapp",
-    "INTERNAL_API_HOST=host.docker.internal:8001",
-    "AIRBYTE_API_HOST=http://host.docker.internal:8001",
-    "AIRBYTE_WORKSPACE_ROOT=/data",
-    "CONFIG_ROOT=/data/config"
-  ]
-  command = ["sh", "-c", "/bin/bash /app.sh webapp"]
-  volumes {
-    host_path      = abspath("${path.module}/airbyte_data")
-    container_path = "/data"
-  }
-  networks_advanced {
-    name = docker_network.main.name
-  }
-}
