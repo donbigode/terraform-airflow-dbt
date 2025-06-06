@@ -37,7 +37,7 @@ Como usar
 
 3. Acesse os serviços:
 
-   - Airflow:      http://localhost:8080
+   - Airflow:      http://localhost:8080 (login: admin / admin)
    - dbt (exec):   make dbt-run
 
 Comandos Makefile úteis
@@ -58,6 +58,7 @@ Observações
 - Os caminhos montados no Airflow e dbt usam bind com `abspath()` no Terraform (funciona apenas com caminhos absolutos).
 - Todos os containers compartilham a rede local criada pelo Terraform para facilitar a comunicação entre serviços.
 - Se mover o diretório do projeto e as montagens aparecerem como `deleted`, execute `make clean && make clean-volumes` para recriar os containers com os novos caminhos.
+
 
 Manutenção
 ----------
