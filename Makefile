@@ -1,7 +1,8 @@
 # -----------------------------
 # 📦 Project name
 # -----------------------------
-PROJECT := dbt_airflow_project
+PROJECT_NAME=dbt_airflow_project
+AIRFLOW_CONTAINER=$(PROJECT_NAME)_airflow
 
 # -----------------------------
 # 🗂 Check required directories
@@ -80,6 +81,18 @@ dbt-shell:
 # -----------------------------
 # 📡 Airflow Commands
 # -----------------------------
+# Cria usuário no Airflow com parâmetros customizáveis
+create-airflow-user:
+	docker exec -it $(AIRFLOW_CONTAINER) bash -c "\
+	airflow db migrate && \
+	airflow users create \
+		--username $(USERNAME) \
+		--password $(PASSWORD) \
+		--firstname $(FIRSTNAME) \
+		--lastname $(LASTNAME) \
+		--role Admin \
+		--email $(EMAIL)"
+
 airflow-open:
 	open http://localhost:8080
 
