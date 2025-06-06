@@ -84,6 +84,10 @@ resource "docker_container" "airflow" {
     host_path      = abspath("${path.module}/orchestrate/dags")
     container_path = "/opt/airflow/dags"
   }
-  command = ["bash", "-c", "airflow db init && airflow webserver"]
+  command = [
+    "bash",
+    "-c",
+    "airflow db init && airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true && airflow webserver"
+  ]
 }
 
