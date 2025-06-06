@@ -39,11 +39,16 @@ clean:
     @echo "🧹 Cleaning Docker and Terraform state..."
     -docker ps -aq --filter "name=$(PROJECT_NAME)" | xargs -r docker rm -f
        -docker volume rm airflow_logs airflow_plugins dbt_models || true
-	-docker volume prune -f
+        -docker volume prune -f
     -docker network ls --format '{{.Name}}' | grep -q "^$(PROJECT_NAME)_network$$" && docker network rm $(PROJECT_NAME)_network || true
-	-rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
-	-find . -type d -name '__pycache__' -exec rm -rf {} +
-	@echo "✅ Clean complete."
+        -rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+        -find . -type d -name '__pycache__' -exec rm -rf {} +
+        @echo "✅ Clean complete."
+
+# Remove only named Docker volumes (útil para montar caminhos corretos)
+clean-volumes:
+    -docker volume rm airflow_logs airflow_plugins dbt_models || true
+    -docker volume prune -f
 
 # -----------------------------
 # ⛔ Destroy Infra
