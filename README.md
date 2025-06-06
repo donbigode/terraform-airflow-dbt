@@ -33,6 +33,9 @@ Como usar
 
    make up
 
+   # O prefixo dos containers é definido pela variável `PROJECT_NAME` do Makefile.
+   # Ajuste-a se desejar usar um nome diferente.
+
 3. Acesse os serviços:
 
    - Airflow:      http://localhost:8080

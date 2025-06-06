@@ -26,9 +26,9 @@ create-volumes:
 # 🚀 Terraform Infrastructure
 # -----------------------------
 up: check-dirs
-	@echo "🚀 Starting infrastructure..."
-	terraform init
-	terraform apply -auto-approve -var="project_name=$(PROJECT)"
+    @echo "🚀 Starting infrastructure..."
+    terraform init
+    terraform apply -auto-approve -var="project_name=$(PROJECT_NAME)"
 	@echo ""
 	@echo "🌐 Services available:"
 	@echo "🔗 Airflow: http://localhost:8080"
@@ -38,12 +38,12 @@ up: check-dirs
 # 🧹 Clean Containers, Volumes, and State
 # -----------------------------
 clean:
-	@echo "🧹 Cleaning Docker and Terraform state..."
-	-docker ps -aq --filter "name=$(PROJECT)" | xargs -r docker rm -f
+    @echo "🧹 Cleaning Docker and Terraform state..."
+    -docker ps -aq --filter "name=$(PROJECT_NAME)" | xargs -r docker rm -f
 	-docker ps -aq --filter "name=airbyte_" | xargs -r docker rm -f
 	-docker volume rm airflow_logs airflow_plugins dbt_models airbyte_data || true
 	-docker volume prune -f
-	-docker network ls --format '{{.Name}}' | grep -q "^$(PROJECT)_network$$" && docker network rm $(PROJECT)_network || true
+    -docker network ls --format '{{.Name}}' | grep -q "^$(PROJECT_NAME)_network$$" && docker network rm $(PROJECT_NAME)_network || true
 	-rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 	-find . -type d -name '__pycache__' -exec rm -rf {} +
 	@echo "✅ Clean complete."
@@ -52,8 +52,8 @@ clean:
 # ⛔ Destroy Infra
 # -----------------------------
 down:
-	@echo "🛑 Destroying infrastructure..."
-	terraform destroy -auto-approve -var="project_name=$(PROJECT)"
+    @echo "🛑 Destroying infrastructure..."
+    terraform destroy -auto-approve -var="project_name=$(PROJECT_NAME)"
 	@echo "✅ Infrastructure stopped."
 
 stop: down
@@ -67,16 +67,16 @@ recreate: clean up
 # 🧪 DBT Commands
 # -----------------------------
 dbt-run:
-	docker exec -it $(PROJECT)_dbt dbt run
+    docker exec -it $(PROJECT_NAME)_dbt dbt run
 
 dbt-seed:
-	docker exec -it $(PROJECT)_dbt dbt seed
+    docker exec -it $(PROJECT_NAME)_dbt dbt seed
 
 dbt-debug:
-	docker exec -it $(PROJECT)_dbt dbt debug
+    docker exec -it $(PROJECT_NAME)_dbt dbt debug
 
 dbt-shell:
-	docker exec -it $(PROJECT)_dbt bash
+    docker exec -it $(PROJECT_NAME)_dbt bash
 
 # -----------------------------
 # 📡 Airflow Commands
@@ -97,21 +97,21 @@ airflow-open:
 	open http://localhost:8080
 
 airflow-shell:
-	docker exec -it $(PROJECT)_airflow bash
+    docker exec -it $(PROJECT_NAME)_airflow bash
 
 airflow-webserver:
-	docker exec -it $(PROJECT)_airflow airflow webserver
+    docker exec -it $(PROJECT_NAME)_airflow airflow webserver
 
 airflow-scheduler:
-	docker exec -it $(PROJECT)_airflow airflow scheduler
+    docker exec -it $(PROJECT_NAME)_airflow airflow scheduler
 
 airflow-trigger:
-	docker exec -it $(PROJECT)_airflow airflow dags trigger example_dag
+    docker exec -it $(PROJECT_NAME)_airflow airflow dags trigger example_dag
 
 # -----------------------------
 # 🔍 Logs & Status
 # -----------------------------
 logs:
-	docker ps -a
-	docker logs $(PROJECT)_dbt || true
-	docker logs $(PROJECT)_airflow || true
+    docker ps -a
+    docker logs $(PROJECT_NAME)_dbt || true
+    docker logs $(PROJECT_NAME)_airflow || true
