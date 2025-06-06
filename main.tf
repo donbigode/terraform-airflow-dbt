@@ -86,44 +86,30 @@ resource "docker_container" "airflow" {
   command = ["bash", "-c", "airflow db init && airflow webserver"]
 }
 
-resource "docker_image" "airbyte_webapp" {
-  name         = "airbyte/webapp:0.50.6"
+resource "docker_image" "airbyte" {
+  name         = "airbyte/airbyte:0.50.6"
   keep_locally = false
 }
 
-resource "docker_image" "airbyte_server" {
-  name         = "airbyte/server:0.50.6"
-  keep_locally = false
-}
-
-resource "docker_image" "airbyte_worker" {
-  name         = "airbyte/worker:0.50.6"
-  keep_locally = false
-}
-
-resource "docker_container" "airbyte_webapp" {
-  name  = "${var.project_name}_airbyte_webapp"
-  image = docker_image.airbyte_webapp.image_id
+resource "docker_container" "airbyte" {
+  name  = "${var.project_name}_airbyte"
+  image = docker_image.airbyte.image_id
   ports {
     internal = 8000
     external = 8000
   }
-  networks_advanced {
-    name = docker_network.main.name
+  env = [
+    "AIRBYTE_ROLE=webapp",
+    "INTERNAL_API_HOST=host.docker.internal:8001",
+    "AIRBYTE_API_HOST=http://host.docker.internal:8001",
+    "AIRBYTE_WORKSPACE_ROOT=/data",
+    "CONFIG_ROOT=/data/config"
+  ]
+  command = ["sh", "-c", "/bin/bash /app.sh webapp"]
+  volumes {
+    host_path      = abspath("${path.module}/airbyte_data")
+    container_path = "/data"
   }
-}
-
-resource "docker_container" "airbyte_server" {
-  name  = "${var.project_name}_airbyte_server"
-  image = docker_image.airbyte_server.image_id
-  networks_advanced {
-    name = docker_network.main.name
-  }
-}
-
-resource "docker_container" "airbyte_worker" {
-  name  = "${var.project_name}_airbyte_worker"
-  image = docker_image.airbyte_worker.image_id
   networks_advanced {
     name = docker_network.main.name
   }
