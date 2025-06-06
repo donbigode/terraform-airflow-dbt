@@ -37,7 +37,7 @@ Como usar
 
 3. Acesse os serviços:
 
-   - Airflow:      http://localhost:8080
+   - Airflow:      http://localhost:8080 (login: admin / admin)
    - dbt (exec):   make dbt-run
 
 Comandos Makefile úteis
