@@ -49,6 +49,7 @@ make dbt-run       → Executa o comando dbt run
 make dbt-test      → Executa o comando dbt test
 make dbt-debug     → Verifica configuração do dbt
 make clean-volumes → Remove volumes persistentes
+make clean         → Remove containers e estado Terraform
 
 Observações
 -----------
@@ -56,6 +57,7 @@ Observações
 - O container do dbt foi atualizado para a versão 1.8.8.
 - Os caminhos montados no Airflow e dbt usam bind com `abspath()` no Terraform (funciona apenas com caminhos absolutos).
 - Todos os containers compartilham a rede local criada pelo Terraform para facilitar a comunicação entre serviços.
+- Se mover o diretório do projeto e as montagens aparecerem como `deleted`, execute `make clean` para recriar os containers com os novos caminhos.
 
 Manutenção
 ----------
