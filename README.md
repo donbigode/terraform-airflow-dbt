@@ -1,13 +1,12 @@
-Projeto Terraform - Airflow, dbt e Airbyte
-==========================================
+Projeto Terraform - Airflow e dbt
+=================================
 
 Descrição
 ---------
 Este projeto usa Terraform para orquestrar um ambiente de dados local baseado em containers Docker. Ele inclui:
 - Apache Airflow: Orquestração de pipelines de dados
 - dbt (data build tool): Transformações SQL em data warehouse
-- Airbyte: Integração de dados entre sistemas
-- PostgreSQL: Banco de dados relacional para Airflow e Airbyte
+- PostgreSQL: Banco de dados relacional para Airflow
 
 Pré-requisitos
 --------------
@@ -40,7 +39,6 @@ Como usar
 
    - Airflow:      http://localhost:8080
    - dbt (exec):   make dbt-run
-   - Airbyte:      http://localhost:8000
 
 Comandos Makefile úteis
 -----------------------
