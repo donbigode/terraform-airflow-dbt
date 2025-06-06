@@ -42,8 +42,7 @@ resource "docker_container" "postgres" {
 }
 
 resource "docker_image" "dbt" {
-  # Atualizado para a versão mais recente do dbt
-  name         = "ghcr.io/dbt-labs/dbt-core:1.8.8"
+  name         = "fishtownanalytics/dbt:1.0.0"
   keep_locally = false
 }
 
