@@ -87,7 +87,62 @@ resource "docker_container" "airflow" {
   command = [
     "bash",
     "-c",
-    "airflow db init && airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true && airflow webserver"
+    "airflow db init && airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true && airflow scheduler & exec airflow webserver"
   ]
 }
 
+
+resource "local_file" "test_dag" {
+  filename = "${path.module}/orchestrate/dags/test_dag.py"
+  content  = <<EOT
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from datetime import datetime
+
+with DAG(
+    dag_id="dbt_test_dag",
+    start_date=datetime(2024, 1, 1),
+    schedule_interval="@daily",
+    catchup=False,
+) as dag:
+    run_dbt = BashOperator(
+        task_id="run_dbt",
+        bash_command="docker exec -t ${docker_container.dbt.name} dbt run --project-dir /usr/app",
+    )
+EOT
+}
+
+resource "local_file" "dbt_project" {
+  filename = "${path.module}/dbt/dbt_project.yml"
+  content  = <<EOT
+name: test_project
+dbt_version: 1.0.0
+config-version: 2
+
+model-paths: ["models"]
+
+profile: test_project
+EOT
+}
+
+resource "local_file" "dbt_profile" {
+  filename = "${path.module}/dbt/profiles.yml"
+  content  = <<EOT
+test_project:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: postgres
+      user: admin
+      password: admin
+      dbname: warehouse
+      port: 5432
+      schema: public
+EOT
+}
+
+resource "local_file" "dbt_model" {
+  filename = "${path.module}/dbt/models/test_model.sql"
+  content  = "select 1 as id"
+}
