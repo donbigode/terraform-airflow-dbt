@@ -1,0 +1,11 @@
+test_project:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: postgres
+      user: admin
+      password: admin
+      dbname: warehouse
+      port: 5432
+      schema: public

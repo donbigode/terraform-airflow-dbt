@@ -17,9 +17,9 @@ Pré-requisitos
 
 Estrutura do Projeto
 --------------------
-- orchestrate/dags         → Código dos DAGs do Airflow
-- transforms/              → Projetos dbt
-- terraform/               → Arquivos .tf (infraestrutura)
+ - orchestrate/dags         → Código dos DAGs do Airflow
+ - dbt/                     → Projeto dbt com modelos e configurações
+ - terraform/               → Arquivos .tf (infraestrutura)
 - Makefile                 → Comandos utilitários
 
 Como usar
@@ -64,3 +64,10 @@ Manutenção
 ----------
 - Atualize as imagens com cuidado (ex: Airflow e dbt têm dependências fixas).
 - Recomenda-se limpar volumes (`make clean-volumes`) ao trocar dados sensíveis como senhas ou nomes de bancos.
+
+Testes de exemplo
+-----------------
+Este repositório inclui um modelo dbt simples e uma DAG de teste que sao
+criados pelo Terraform. Os arquivos finais sao gravados em
+`dbt/models/test_model.sql` e `orchestrate/dags/test_dag.py` por recursos
+`local_file`. A DAG executa o comando `dbt run` no container do dbt.
